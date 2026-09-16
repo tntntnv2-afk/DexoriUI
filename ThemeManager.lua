@@ -4,11 +4,12 @@ local ThemeManager = {}
 ThemeManager.Folder = "DexoriUI"
 ThemeManager.Library = nil
 ThemeManager.BuiltIn = {
-	["Dexori Red"] = { Background = "0c0c0c", Main = "131313", Element = "1a1a1a", ElementHover = "222222", Accent = "c81e1e", AccentGradient = { "e62828", "780a0a", 0 }, Outline = "262626", OutlineStrong = "3c1212", Font = "f0f0f0", FontDim = "96969b", Risky = "ff5050" },
-	["Midnight"] = { Background = "0b0d14", Main = "10131c", Element = "171b27", ElementHover = "1f2433", Accent = "4f7cff", AccentGradient = { "6b8fff", "2b4fd6", 0 }, Outline = "222838", OutlineStrong = "2c3a66", Font = "eef0f6", FontDim = "8b91a3", Risky = "ff6b6b" },
-	["Emerald"] = { Background = "0a0f0c", Main = "0f1612", Element = "151f19", ElementHover = "1c2922", Accent = "2ecc71", AccentGradient = { "3ddc84", "1a8f4c", 0 }, Outline = "1f2b25", OutlineStrong = "1f4a33", Font = "ecf5ef", FontDim = "8aa091", Risky = "ff6b6b" },
-	["Mono"] = { Background = "0a0a0a", Main = "111111", Element = "181818", ElementHover = "202020", Accent = "e8e8e8", AccentGradient = { "ffffff", "9a9a9a", 0 }, Outline = "242424", OutlineStrong = "3a3a3a", Font = "f5f5f5", FontDim = "8f8f8f", Risky = "ff5050" },
-	["Amethyst"] = { Background = "0d0a14", Main = "130f1c", Element = "1a1527", ElementHover = "231c33", Accent = "9b59ff", AccentGradient = { "b07cff", "5e2bd6", 0 }, Outline = "27203a", OutlineStrong = "3e2c66", Font = "f1ecf8", FontDim = "9a8fb0", Risky = "ff6b6b" },
+	["Frostbite"] = { Background = "070a10", Main = "0b0f17", Element = "111722", ElementHover = "18202e", Accent = "60b2ff", AccentGradient = { "96d6ff", "2260be", 0 }, Outline = "1c2636", OutlineStrong = "2e568c", Font = "e2ebf5", FontDim = "7889a0", Risky = "ff6060" },
+	["Dexori Red"] = { Background = "0a0a0b", Main = "0f0f11", Element = "161619", ElementHover = "1e1e22", Accent = "c81e1e", AccentGradient = { "eb2d2d", "6e0808", 0 }, Outline = "242428", OutlineStrong = "461212", Font = "e6e6e8", FontDim = "808088", Risky = "ff5050" },
+	["Nightshade"] = { Background = "0b0810", Main = "100c18", Element = "171124", ElementHover = "1f1830", Accent = "9b59ff", AccentGradient = { "c08cff", "5e2bd6", 0 }, Outline = "231a33", OutlineStrong = "42288c", Font = "ece6f8", FontDim = "8b7fa8", Risky = "ff6b6b" },
+	["Pine"] = { Background = "07100c", Main = "0b1712", Element = "10201a", ElementHover = "172c24", Accent = "34d399", AccentGradient = { "6ee7b7", "0f9268", 0 }, Outline = "173028", OutlineStrong = "1d6b4c", Font = "e4f3ec", FontDim = "76998a", Risky = "ff6b6b" },
+	["Carbon"] = { Background = "09090a", Main = "0e0e10", Element = "141416", ElementHover = "1c1c20", Accent = "d8d8dc", AccentGradient = { "ffffff", "8c8c94", 0 }, Outline = "1f1f23", OutlineStrong = "3a3a42", Font = "f2f2f4", FontDim = "83838c", Risky = "ff5050" },
+	["Ember"] = { Background = "100b07", Main = "17100a", Element = "20170f", ElementHover = "2c2016", Accent = "ff8a3d", AccentGradient = { "ffb066", "cc5a10", 0 }, Outline = "2e2114", OutlineStrong = "7a4416", Font = "f6ece2", FontDim = "a08a76", Risky = "ff6060" },
 }
 
 local function hexToColor(h)
@@ -129,7 +130,7 @@ function ThemeManager:ApplyToTab(tab)
 		:AddButton({ Text = "Set default", Func = function() if list.Value then self:SetDefaultTheme(list.Value) Library:Notify({ Title = "Theme", Description = "Default: " .. list.Value, Time = 3 }) end end })
 	gb2:AddButton({ Text = "Save as", Func = function() self:SaveTheme(nameBox.Value) list:SetValues(self:ListThemes()) end })
 		:AddButton({ Text = "Delete", Risky = true, DoubleClick = true, Func = function() if list.Value and self:DeleteTheme(list.Value) then list:SetValues(self:ListThemes()) end end })
-	gb2:AddButton({ Text = "Reset to Dexori Red", Func = function() self:ApplyTheme("Dexori Red") end })
+	gb2:AddButton({ Text = "Reset to Frostbite", Func = function() self:ApplyTheme("Frostbite") end })
 	gb2:AddButton({ Text = "Refresh list", Func = function() list:SetValues(self:ListThemes()) end })
 	self:LoadDefault()
 end
