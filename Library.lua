@@ -32,8 +32,9 @@ local Library = {
 		FontDim = Color3.fromRGB(128, 128, 136),
 		Risky = Color3.fromRGB(255, 80, 80),
 	},
-	FontFace = Font.fromEnum(Enum.Font.RobotoMono),
-	FontFaceBold = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Bold),
+	FontFace = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Medium),
+	FontFaceBold = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Bold),
+	ESPFont = Font.fromEnum(Enum.Font.Code),
 	ToggleKeybind = Enum.KeyCode.RightControl,
 	Icon = "rbxassetid://83607561451748",
 	Effects = { Blur = true, Snow = true, BlurSize = 12, SnowCount = 45 },
@@ -112,6 +113,35 @@ local function Draggable(handle, frame)
 		end
 	end))
 end
+-- click ripple, used on every pressable surface
+local function Ripple(btn, color)
+	btn.ClipsDescendants = true
+	btn.InputBegan:Connect(function(inp)
+		if not (inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch) then return end
+		local abs = btn.AbsolutePosition
+		local rx, ry = inp.Position.X - abs.X, inp.Position.Y - abs.Y
+		local far = math.max(btn.AbsoluteSize.X, btn.AbsoluteSize.Y) * 2
+		local c = Create("Frame", { Size = UDim2.fromOffset(0, 0), Position = UDim2.fromOffset(rx, ry), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = color or Library.Theme.Accent, BackgroundTransparency = 0.72, BorderSizePixel = 0, ZIndex = (btn.ZIndex or 1) + 1, Parent = btn })
+		Create("UICorner", { CornerRadius = UDim.new(1, 0), Parent = c })
+		Tween(c, { Size = UDim2.fromOffset(far, far), BackgroundTransparency = 1 }, 0.45, Enum.EasingStyle.Quint)
+		task.delay(0.5, function() c:Destroy() end)
+	end)
+end
+-- squash on press so buttons feel physical
+local function Press(btn, scale)
+	local s = Create("UIScale", { Scale = 1, Parent = btn })
+	btn.InputBegan:Connect(function(inp)
+		if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+			Tween(s, { Scale = scale or 0.97 }, 0.08)
+		end
+	end)
+	btn.InputEnded:Connect(function(inp)
+		if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+			Tween(s, { Scale = 1 }, 0.16, Enum.EasingStyle.Back)
+		end
+	end)
+	return s
+end
 local function Hover(btn, normalKey, hoverKey)
 	btn.MouseEnter:Connect(function() Tween(btn, { BackgroundColor3 = Library.Theme[hoverKey] }, 0.1) end)
 	btn.MouseLeave:Connect(function() Tween(btn, { BackgroundColor3 = Library.Theme[normalKey] }, 0.1) end)
@@ -130,20 +160,20 @@ local function Shadow(frame, spread)
 	return s
 end
 Library.Create, Library.Tween, Library.Text, Library.Draggable = Create, Tween, Text, Draggable
+Library.Ripple, Library.Press = Ripple, Press
 Library.Glass, Library.Shadow = Glass, Shadow
 
 -- ---------------------------------------------------------------- backdrop: blur + snow
-local Backdrop = Create("Frame", { Name = "Backdrop", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.fromRGB(10, 28, 58), BackgroundTransparency = 1, Visible = false, ZIndex = 0, Parent = ScreenGui })
+local Backdrop = Create("Frame", { Name = "Backdrop", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 1, Visible = false, ZIndex = 0, Parent = ScreenGui })
 Create("UIGradient", {
 	Rotation = 90,
 	Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(26, 62, 116)),
-		ColorSequenceKeypoint.new(0.55, Color3.fromRGB(10, 26, 54)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(4, 9, 20)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(18, 18, 20)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0)),
 	}),
 	Parent = Backdrop,
 })
-local BackdropGlow = Create("ImageLabel", { Name = "Glow", Size = UDim2.new(1.4, 0, 1.4, 0), Position = UDim2.new(-0.2, 0, -0.5, 0), BackgroundTransparency = 1, Image = "rbxassetid://5028857084", ImageColor3 = Color3.fromRGB(120, 190, 255), ImageTransparency = 0.82, ZIndex = 0, Parent = Backdrop })
+local BackdropGlow = Create("ImageLabel", { Name = "Glow", Size = UDim2.new(1.4, 0, 1.4, 0), Position = UDim2.new(-0.2, 0, -0.5, 0), BackgroundTransparency = 1, Image = "rbxassetid://5028857084", ImageColor3 = Color3.fromRGB(0, 0, 0), ImageTransparency = 0.5, ZIndex = 0, Parent = Backdrop })
 local Blur = Create("BlurEffect", { Name = "DexoriBlur", Size = 0, Enabled = false, Parent = Lighting })
 local flakes = {}
 local snowConn = nil
@@ -179,7 +209,7 @@ end
 function Library:_SetBackdrop(on)
 	if on then
 		Backdrop.Visible = true
-		Tween(Backdrop, { BackgroundTransparency = 0.28 }, 0.25)
+		Tween(Backdrop, { BackgroundTransparency = 0.32 }, 0.25)
 		if self.Effects.Blur then Blur.Enabled = true Tween(Blur, { Size = self.Effects.BlurSize }, 0.25) end
 		if self.Effects.Snow then startSnow() end
 	else
@@ -319,20 +349,37 @@ function Library:CreateWindow(cfg)
 	self:AddToRegistry(rail, { BackgroundColor3 = "Main" })
 	local railEdge = Create("Frame", { Size = UDim2.new(0, 1, 1, 0), Position = UDim2.new(1, -1, 0, 0), BackgroundTransparency = 0.5, BorderSizePixel = 0, ZIndex = 12, Parent = rail })
 	self:AddToRegistry(railEdge, { BackgroundColor3 = "Outline" })
-	local logo = Create("ImageLabel", { Size = UDim2.fromOffset(30, 30), Position = UDim2.new(0.5, -15, 0, 18), BackgroundTransparency = 1, Image = cfg.Icon and ("rbxassetid://" .. tostring(cfg.Icon)) or Library.Icon, ZIndex = 13, Parent = rail })
+	local logoRing = Create("Frame", { Size = UDim2.fromOffset(42, 42), Position = UDim2.new(0.5, -21, 0, 14), BackgroundTransparency = 1, ZIndex = 12, Parent = rail })
+	Corner(logoRing, 14)
+	local ringStroke = Create("UIStroke", { Thickness = 1, Transparency = 0.55, Parent = logoRing })
+	self:AddToRegistry(ringStroke, { Color = "Accent" })
+	local logo = Create("ImageLabel", { Size = UDim2.fromOffset(26, 26), Position = UDim2.new(0.5, -13, 0, 22), BackgroundTransparency = 1, Image = cfg.Icon and ("rbxassetid://" .. tostring(cfg.Icon)) or Library.Icon, ZIndex = 13, Parent = rail })
+	task.spawn(function()
+		while not Library.Unloaded and ringStroke.Parent do
+			Tween(ringStroke, { Transparency = 0.85 }, 1.5, Enum.EasingStyle.Sine)
+			task.wait(1.5)
+			Tween(ringStroke, { Transparency = 0.45 }, 1.5, Enum.EasingStyle.Sine)
+			task.wait(1.5)
+		end
+	end)
 	local railList = Create("Frame", { Size = UDim2.new(1, 0, 1, -140), Position = UDim2.new(0, 0, 0, 68), BackgroundTransparency = 1, ZIndex = 12, Parent = rail })
 	Create("UIListLayout", { HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = railList })
 	-- sliding indicator
-	local pill = Create("Frame", { Size = UDim2.fromOffset(3, 22), Position = UDim2.new(0, 0, 0, 80), AnchorPoint = Vector2.new(0, 0.5), ZIndex = 14, Parent = rail })
+	local pill = Create("Frame", { Size = UDim2.fromOffset(3, 24), Position = UDim2.new(0, 0, 0, 80), AnchorPoint = Vector2.new(0, 0.5), ZIndex = 14, Parent = rail })
 	self:AddToRegistry(pill, { BackgroundColor3 = "Accent" }); Corner(pill, 2)
+	local pillGlow = Create("ImageLabel", { Size = UDim2.fromOffset(52, 52), Position = UDim2.new(0, -16, 0.5, -26), BackgroundTransparency = 1, Image = "rbxassetid://5028857084", ImageTransparency = 0.6, ZIndex = 13, Parent = pill })
+	self:AddToRegistry(pillGlow, { ImageColor3 = "Accent" })
 	-- toggle hint at the bottom of the rail
 	local hint = Text(rail, "", 9, false, "FontDim"); hint.TextXAlignment = Enum.TextXAlignment.Center; hint.Position = UDim2.new(0, 0, 1, -26); hint.Size = UDim2.new(1, 0, 0, 14); hint.ZIndex = 13
 	hint.Text = tostring(Library.ToggleKeybind and Library.ToggleKeybind.Name or "")
 
 	-- ---------------------------------------------------------------- header
 	local head = Create("Frame", { Size = UDim2.new(1, -68, 0, 72), Position = UDim2.new(0, 68, 0, 0), BackgroundTransparency = 1, ZIndex = 12, Parent = main })
-	local pageTitle = Text(head, "", 19, true); pageTitle.Position = UDim2.new(0, 22, 0, 16); pageTitle.Size = UDim2.new(0.5, 0, 0, 24); pageTitle.ZIndex = 13
-	local pageSub = Text(head, cfg.Subtitle or "", 11, false, "FontDim"); pageSub.Position = UDim2.new(0, 22, 0, 40); pageSub.Size = UDim2.new(0.5, 0, 0, 14); pageSub.ZIndex = 13
+	local pageTitle = Text(head, "", 21, true); pageTitle.Position = UDim2.new(0, 24, 0, 13); pageTitle.Size = UDim2.new(0.5, 0, 0, 26); pageTitle.ZIndex = 13
+	local titleBar = Create("Frame", { Size = UDim2.fromOffset(24, 3), Position = UDim2.new(0, 24, 0, 41), ZIndex = 13, Parent = head })
+	Corner(titleBar, 2); Create("UIGradient", { Parent = titleBar })
+	self:AddToRegistry(titleBar.UIGradient, { Color = "AccentGradient" })
+	local pageSub = Text(head, cfg.Subtitle or "", 11, false, "FontDim"); pageSub.Position = UDim2.new(0, 24, 0, 48); pageSub.Size = UDim2.new(0.5, 0, 0, 14); pageSub.ZIndex = 13
 	Draggable(head, main)
 
 	local searchBox = Create("Frame", { Size = UDim2.new(0, 210, 0, 32), Position = UDim2.new(1, -232, 0, 22), ZIndex = 13, Parent = head })
@@ -388,17 +435,27 @@ function Library:CreateWindow(cfg)
 
 	-- ---------------------------------------------------------------- visibility
 	local visible = cfg.AutoShow ~= false
+	local winScale = Create("UIScale", { Scale = 1, Parent = main })
 	local function show(on)
 		visible = on
 		Library:_SetBackdrop(on)
 		if on then
 			main.Visible = true
-			main.Size = UDim2.fromOffset(size.X.Offset, size.Y.Offset * 0.92)
-			Tween(main, { Size = size }, 0.18, Enum.EasingStyle.Quint)
+			winScale.Scale = 0.92
+			main.BackgroundTransparency = 1
+			Tween(winScale, { Scale = 1 }, 0.34, Enum.EasingStyle.Back)
+			Tween(main, { BackgroundTransparency = 0 }, 0.2)
+			-- rail items cascade in
+			for i, t in ipairs(window.Tabs) do
+				local sc = t._btn:FindFirstChildOfClass("UIScale") or Create("UIScale", { Parent = t._btn })
+				sc.Scale = 0.6
+				task.delay(0.04 * i, function() Tween(sc, { Scale = 1 }, 0.3, Enum.EasingStyle.Back) end)
+			end
 		else
 			Library:_ClosePopups()
-			Tween(main, { Size = UDim2.fromOffset(size.X.Offset, size.Y.Offset * 0.94) }, 0.12).Completed:Connect(function()
-				if not visible then main.Visible = false main.Size = size end
+			Tween(winScale, { Scale = 0.94 }, 0.16, Enum.EasingStyle.Quad)
+			Tween(main, { BackgroundTransparency = 1 }, 0.16).Completed:Connect(function()
+				if not visible then main.Visible = false main.BackgroundTransparency = 0 winScale.Scale = 1 end
 			end)
 		end
 	end
@@ -481,15 +538,29 @@ function Library:CreateWindow(cfg)
 			self._btn.BackgroundTransparency = 0
 			if self._glyph:IsA("ImageLabel") then Tween(self._glyph, { ImageColor3 = Library.Theme.Accent }, 0.12) else Tween(self._glyph, { TextColor3 = Library.Theme.Accent }, 0.12) end
 			pageTitle.Text = name
+			task.defer(function() Tween(titleBar, { Size = UDim2.fromOffset(math.clamp(pageTitle.TextBounds.X, 20, 140), 3) }, 0.28, Enum.EasingStyle.Quint) end)
 			window.ActiveTab = self
 			local y = self._btn.AbsolutePosition.Y - rail.AbsolutePosition.Y + self._btn.AbsoluteSize.Y * 0.5
 			Tween(pill, { Position = UDim2.new(0, 0, 0, y) }, 0.22, Enum.EasingStyle.Back)
-			-- content slide-in
+			-- cards stagger in
+			local i = 0
 			for _, c in ipairs(self._cols) do
-				c.Position = UDim2.new(c.Position.X.Scale, c.Position.X.Offset, 0, c.Position.Y.Offset + 8)
-				Tween(c, { Position = UDim2.new(c.Position.X.Scale, c.Position.X.Offset, 0, c.Position.Y.Offset - 8) }, 0.16)
+				for _, card in ipairs(c:GetChildren()) do
+					if card:IsA("Frame") then
+						i = i + 1
+						local sc = card:FindFirstChildOfClass("UIScale") or Create("UIScale", { Parent = card })
+						sc.Scale = 0.97
+						card.BackgroundTransparency = 1
+						local delay = 0.025 * math.min(i, 8)
+						task.delay(delay, function()
+							Tween(sc, { Scale = 1 }, 0.26, Enum.EasingStyle.Back)
+							Tween(card, { BackgroundTransparency = 0 }, 0.2)
+						end)
+					end
+				end
 			end
 		end
+		Press(btn, 0.92)
 		btn.MouseButton1Click:Connect(function() tab:Select() end)
 
 		function tab:AddSubTab(subName)
@@ -534,12 +605,14 @@ function Library:CreateWindow(cfg)
 		gbOrder = gbOrder + 1
 		local gb = { Name = name, Path = path .. " / " .. name }
 		local card = Create("Frame", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = gbOrder, ZIndex = 12, Parent = column })
-		Library:AddToRegistry(card, { BackgroundColor3 = "Main" }); Corner(card, 12); Stroke(card, "Outline")
-		local head2 = Create("Frame", { Size = UDim2.new(1, 0, 0, 38), BackgroundTransparency = 1, ZIndex = 13, Parent = card })
-		local mark = Create("Frame", { Size = UDim2.fromOffset(3, 14), Position = UDim2.new(0, 14, 0.5, -7), ZIndex = 14, Parent = head2 })
+		Library:AddToRegistry(card, { BackgroundColor3 = "Main" }); Corner(card, 14); Stroke(card, "Outline")
+		local lip = Create("Frame", { Size = UDim2.new(1, -30, 0, 1), Position = UDim2.new(0, 15, 0, 0), BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.9, BorderSizePixel = 0, ZIndex = 13, Parent = card })
+		local head2 = Create("Frame", { Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1, ZIndex = 13, Parent = card })
+		local mark = Create("Frame", { Size = UDim2.fromOffset(4, 16), Position = UDim2.new(0, 15, 0.5, -8), ZIndex = 14, Parent = head2 })
 		Library:AddToRegistry(mark, { BackgroundColor3 = "Accent" }); Corner(mark, 2)
-		local t = Text(head2, name, 12, true); t.Position = UDim2.new(0, 25, 0, 0); t.Size = UDim2.new(1, -40, 1, 0); t.ZIndex = 14
-		local holder = Create("Frame", { Size = UDim2.new(1, -28, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(0, 14, 0, 36), BackgroundTransparency = 1, ZIndex = 13, Parent = card })
+		Create("UIGradient", { Rotation = 90, Parent = mark }); Library:AddToRegistry(mark.UIGradient, { Color = "AccentGradient" })
+		local t = Text(head2, string.upper(name), 11, true); t.Position = UDim2.new(0, 28, 0, 0); t.Size = UDim2.new(1, -44, 1, 0); t.ZIndex = 14
+		local holder = Create("Frame", { Size = UDim2.new(1, -32, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(0, 16, 0, 40), BackgroundTransparency = 1, ZIndex = 13, Parent = card })
 		Pad(holder, 0, 0, 0, 14)
 		Create("UIListLayout", { Padding = UDim.new(0, 9), SortOrder = Enum.SortOrder.LayoutOrder, Parent = holder })
 		gb.Frame, gb.Holder, gb._order = card, holder, 0
@@ -610,6 +683,7 @@ local function makeButton(parent, cfg, size, pos)
 	Library:AddToRegistry(b, { BackgroundColor3 = "Element" }); Corner(b, 8); Stroke(b, cfg.Risky and "Risky" or "Outline")
 	local l = Text(b, cfg.Text or "button", 11, true, cfg.Risky and "Risky" or "Font"); l.TextXAlignment = Enum.TextXAlignment.Center; l.Size = UDim2.new(1, 0, 1, 0); l.ZIndex = 6
 	Hover(b, "Element", "ElementHover")
+	Ripple(b); Press(b)
 	local armed = false
 	b.MouseButton1Click:Connect(function()
 		if cfg.DoubleClick then
@@ -641,16 +715,20 @@ function GroupboxMethods:AddToggle(idx, cfg)
 	cfg = cfg or {}
 	local f = row(self, 20)
 	local hit = Create("TextButton", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "", ZIndex = 5, Parent = f })
-	local box = Create("Frame", { Size = UDim2.fromOffset(14, 14), Position = UDim2.new(0, 0, 0.5, -7), ZIndex = 5, Parent = f })
-	Library:AddToRegistry(box, { BackgroundColor3 = "Element" }); Corner(box, 4); local bs = Stroke(box, "Outline")
-	local fill = Create("Frame", { Size = UDim2.new(1, -4, 1, -4), Position = UDim2.new(0, 2, 0, 2), BorderSizePixel = 0, ZIndex = 6, Visible = false, Parent = box })
-	Corner(fill, 1); Create("UIGradient", { Rotation = 45, Parent = fill }); Library:AddToRegistry(fill.UIGradient, { Color = "AccentGradient" })
-	local l = Text(f, cfg.Text or idx, 12, false); l.Position = UDim2.new(0, 22, 0, 0); l.Size = UDim2.new(1, -20, 1, 0); l.ZIndex = 5
-	local fitLabel = function() bindLabelWidth(l, f, 20) end
+	local box = Create("Frame", { Size = UDim2.fromOffset(30, 16), Position = UDim2.new(0, 0, 0.5, -8), ZIndex = 5, Parent = f })
+	Library:AddToRegistry(box, { BackgroundColor3 = "Element" }); Corner(box, 8); local bs = Stroke(box, "Outline")
+	local fill = Create("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, BorderSizePixel = 0, ZIndex = 6, Parent = box })
+	Corner(fill, 8); Create("UIGradient", { Rotation = 15, Parent = fill }); Library:AddToRegistry(fill.UIGradient, { Color = "AccentGradient" })
+	local knobT = Create("Frame", { Size = UDim2.fromOffset(12, 12), Position = UDim2.new(0, 2, 0.5, -6), BackgroundColor3 = Color3.fromRGB(190, 190, 196), BorderSizePixel = 0, ZIndex = 7, Parent = box })
+	Corner(knobT, 6)
+	local l = Text(f, cfg.Text or idx, 12, false); l.Position = UDim2.new(0, 40, 0, 0); l.Size = UDim2.new(1, -40, 1, 0); l.ZIndex = 5
+	local fitLabel = function() bindLabelWidth(l, f, 40) end
 	local obj = { Frame = f, Value = cfg.Default and true or false, Type = "Toggle", Idx = idx, Callback = cfg.Callback, _changed = {} }
 	local function render()
-		fill.Visible = obj.Value
-		bs.Color = obj.Value and Library.Theme.Accent or Library.Theme.Outline
+		local on = obj.Value
+		Tween(fill, { BackgroundTransparency = on and 0 or 1 }, 0.16)
+		Tween(knobT, { Position = on and UDim2.new(1, -14, 0.5, -6) or UDim2.new(0, 2, 0.5, -6), BackgroundColor3 = on and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(190, 190, 196) }, 0.2, Enum.EasingStyle.Back)
+		bs.Color = on and Library.Theme.Accent or Library.Theme.Outline
 		Library.Registry[bs] = obj.Value and { Color = "Accent" } or { Color = "Outline" }
 		Tween(l, { TextColor3 = obj.Value and Library.Theme.Font or Library.Theme.FontDim }, 0.1)
 		Library.Registry[l] = obj.Value and { TextColor3 = "Font" } or { TextColor3 = "FontDim" }
@@ -716,9 +794,9 @@ function GroupboxMethods:AddSlider(idx, cfg)
 	function obj:OnChanged(fn) table.insert(self._changed, fn) end
 	local dragging = false
 	local function fromX(x) obj:SetValue(min + (max - min) * math.clamp((x - track.AbsolutePosition.X) / math.max(track.AbsoluteSize.X, 1), 0, 1)) end
-	hit.InputBegan:Connect(function(inp) if IsPressed(inp) then dragging = true fromX(inp.Position.X) end end)
+	hit.InputBegan:Connect(function(inp) if IsPressed(inp) then dragging = true Tween(knob, { Size = UDim2.fromOffset(14, 14) }, 0.12, Enum.EasingStyle.Back) fromX(inp.Position.X) end end)
 	Library:GiveSignal(UserInputService.InputChanged:Connect(function(inp) if dragging and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then fromX(inp.Position.X) end end))
-	Library:GiveSignal(UserInputService.InputEnded:Connect(function(inp) if IsPressed(inp) then dragging = false end end))
+	Library:GiveSignal(UserInputService.InputEnded:Connect(function(inp) if IsPressed(inp) then if dragging then Tween(knob, { Size = UDim2.fromOffset(10, 10) }, 0.14) end dragging = false end end))
 	render()
 	Library.Options[idx] = obj
 	reg(self, cfg.Text or idx, f)
@@ -822,7 +900,15 @@ function GroupboxMethods:AddDropdown(idx, cfg)
 		list.Size = UDim2.new(0, btn.AbsoluteSize.X, 0, 0)
 		list.Position = UDim2.new(0, btn.AbsolutePosition.X, 0, btn.AbsolutePosition.Y + btn.AbsoluteSize.Y + 3)
 		build()
-		list.Visible = not list.Visible
+		if list.Visible then
+			list.Visible = false
+		else
+			list.Visible = true
+			local sc = list:FindFirstChildOfClass("UIScale") or Create("UIScale", { Parent = list })
+			sc.Scale = 0.94
+			Tween(sc, { Scale = 1 }, 0.22, Enum.EasingStyle.Back)
+		end
+		Tween(arrow, { Rotation = list.Visible and 180 or 0 }, 0.18)
 	end)
 	function obj:SetValues(vals)
 		self.Values = vals or {}
@@ -1132,11 +1218,11 @@ function GroupboxMethods:AddESPPreview(cfg)
 				local P = t.Parts
 				P.Box.Size = UDim2.fromOffset(math.floor(w + 0.5), math.floor(h + 0.5))
 				P.Box.Position = UDim2.fromOffset(math.floor(cx + 0.5), math.floor(cy + 0.5))
-				P.Name.Position = UDim2.fromOffset(math.floor(cx + 0.5), math.floor(minY) - 3)
-				P.Distance.Position = UDim2.fromOffset(math.floor(cx + 0.5), math.floor(maxY) + 2)
-				P.Weapon.Position = UDim2.fromOffset(math.floor(cx + 0.5), math.floor(maxY) + 14)
-				P.HealthBg.Size = UDim2.fromOffset(2, math.floor(h + 0.5))
-				P.HealthBg.Position = UDim2.fromOffset(math.floor(minX) - 5, math.floor(cy + 0.5))
+				local top = math.floor(minY) - 6
+				P.Name.Position = UDim2.fromOffset(math.floor(cx + 0.5), top - 17)
+				P.Distance.Position = UDim2.fromOffset(math.floor(cx + 0.5), top - 4)
+				P.HealthBg.Position = UDim2.fromOffset(math.floor(cx + 0.5), top)
+				P.Weapon.Position = UDim2.fromOffset(math.floor(cx + 0.5), math.floor(maxY) + 4)
 				local ox, oy = canvas.AbsoluteSize.X * 0.5, canvas.AbsoluteSize.Y
 				local dx, dy = cx - ox, maxY - oy
 				local len = math.sqrt(dx * dx + dy * dy)
@@ -1151,15 +1237,25 @@ function GroupboxMethods:AddESPPreview(cfg)
 		local box = Create("Frame", { Size = UDim2.new(0, 64, 0, 132), Position = UDim2.new(0.5, -32, 0.5, -66), BackgroundTransparency = 1, ZIndex = 8, Parent = page })
 		box.AnchorPoint = Vector2.new(0.5, 0.5)
 		local boxStroke = Create("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 1, Parent = box })
-		local nameL = Create("TextLabel", { AnchorPoint = Vector2.new(0.5, 1), Size = UDim2.new(0, 150, 0, 12), Position = UDim2.new(0.5, 0, 0.5, -80), BackgroundTransparency = 1, Text = "player", TextSize = 11, FontFace = Library.FontFaceBold, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0, ZIndex = 9, Parent = page })
-		local distL = Create("TextLabel", { AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.new(0, 150, 0, 12), Position = UDim2.new(0.5, 0, 0.5, 68), BackgroundTransparency = 1, Text = "[42]", TextSize = 10, FontFace = Library.FontFace, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0, ZIndex = 9, Parent = page })
-		local weapon = Create("TextLabel", { AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.new(0, 150, 0, 12), Position = UDim2.new(0.5, 0, 0.5, 80), BackgroundTransparency = 1, Text = "weapon", TextSize = 10, FontFace = Library.FontFace, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0, ZIndex = 9, Parent = page })
-		local hpBg = Create("Frame", { AnchorPoint = Vector2.new(1, 0.5), Size = UDim2.new(0, 2, 0, 132), Position = UDim2.new(0.5, -37, 0.5, 0), BackgroundColor3 = Color3.new(0, 0, 0), ZIndex = 8, Parent = page })
-		local hp = Create("Frame", { Size = UDim2.new(1, 0, 0.75, 0), Position = UDim2.new(0, 0, 0.25, 0), BackgroundColor3 = Color3.fromRGB(60, 220, 90), BorderSizePixel = 0, ZIndex = 9, Parent = hpBg })
+		-- same card the in-game ESP draws: Code font, hard black stroke, name over "[dist] hp/max", flat bar under it
+		local nameL = Create("TextLabel", { AnchorPoint = Vector2.new(0.5, 1), Size = UDim2.new(0, 160, 0, 14), Position = UDim2.new(0.5, 0, 0.5, -80), BackgroundTransparency = 1, Text = "player", TextSize = 13, FontFace = Library.ESPFont, TextColor3 = Color3.fromRGB(255, 255, 255), TextStrokeColor3 = Color3.fromRGB(0, 0, 0), TextStrokeTransparency = 0, ZIndex = 9, Parent = page })
+		local distL = Create("TextLabel", { AnchorPoint = Vector2.new(0.5, 1), Size = UDim2.new(0, 160, 0, 12), Position = UDim2.new(0.5, 0, 0.5, -66), BackgroundTransparency = 1, Text = "[42] 180/250", TextSize = 11, FontFace = Library.ESPFont, TextColor3 = Color3.fromRGB(220, 220, 220), TextStrokeColor3 = Color3.fromRGB(0, 0, 0), TextStrokeTransparency = 0, ZIndex = 9, Parent = page })
+		local weapon = Create("TextLabel", { AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.new(0, 160, 0, 12), Position = UDim2.new(0.5, 0, 0.5, 74), BackgroundTransparency = 1, Text = "weapon", TextSize = 11, FontFace = Library.ESPFont, TextColor3 = Color3.fromRGB(220, 220, 220), TextStrokeColor3 = Color3.fromRGB(0, 0, 0), TextStrokeTransparency = 0, ZIndex = 9, Parent = page })
+		local hpBg = Create("Frame", { AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.new(0, 60, 0, 3), Position = UDim2.new(0.5, 0, 0.5, -52), BackgroundColor3 = Color3.fromRGB(0, 0, 0), BorderSizePixel = 1, BorderColor3 = Color3.fromRGB(0, 0, 0), ZIndex = 9, Parent = page })
+		local hp = Create("Frame", { Size = UDim2.fromScale(0.72, 1), BackgroundColor3 = Color3.fromRGB(71, 255, 0), BorderSizePixel = 0, ZIndex = 10, Parent = hpBg })
 		local tracer = Create("Frame", { AnchorPoint = Vector2.new(0.5, 1), Size = UDim2.new(0, 1, 0, 70), Position = UDim2.new(0.5, 0, 1, 0), BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, ZIndex = 8, Parent = page })
 		local tab = { Name = name, Page = page, Parts = { Box = box, BoxStroke = boxStroke, Name = nameL, Distance = distL, HealthBg = hpBg, Health = hp, Tracer = tracer, Weapon = weapon } }
 		preview._tracked = preview._tracked or {}
 		table.insert(preview._tracked, tab)
+		function tab:SetText(which, text)
+			local p = self.Parts[which]
+			if p and p:IsA("TextLabel") then p.Text = text end
+		end
+		function tab:SetHealth(frac)
+			frac = math.clamp(frac or 1, 0, 1)
+			self.Parts.Health.Size = UDim2.fromScale(frac, 1)
+			self.Parts.Health.BackgroundColor3 = Color3.fromRGB(math.floor(255 * (1 - frac)), math.floor(255 * frac), 0)
+		end
 		function tab:Set(settings)
 			for key, val in pairs(settings) do
 				local part = self.Parts[key]
